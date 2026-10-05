@@ -1,0 +1,91 @@
+name: Build OBS 32.1.2 YTQ
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-x64:
+    name: Windows x64 YTQ
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Check out OBS and submodules
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Verify pinned sources
+        run: |
+          git merge-base --is-ancestor 32.1.2 HEAD
+          if ($LASTEXITCODE -ne 0) {
+            throw 'The build branch is not based on OBS 32.1.2.'
+          }
+
+          $BrowserCommit = git -C plugins/obs-browser rev-parse HEAD
+          if ($BrowserCommit -ne '6b6672b2fc5051d6be943489212d64ae15728ec9') {
+            throw "Unexpected obs-browser commit: $BrowserCommit"
+          }
+
+          "OBS commit: $(git rev-parse HEAD)"
+          "obs-browser commit: $BrowserCommit"
+
+      - name: Disk before build
+        run: Get-PSDrive -Name C | Format-Table -AutoSize
+
+      - name: Build OBS Studio
+        uses: ./.github/actions/build-obs
+        env:
+          TWITCH_CLIENTID: ${{ secrets.TWITCH_CLIENT_ID }}
+          TWITCH_HASH: ${{ secrets.TWITCH_HASH }}
+          RESTREAM_CLIENTID: ${{ secrets.RESTREAM_CLIENTID }}
+          RESTREAM_HASH: ${{ secrets.RESTREAM_HASH }}
+          YOUTUBE_CLIENTID: ${{ secrets.YOUTUBE_CLIENTID }}
+          YOUTUBE_CLIENTID_HASH: ${{ secrets.YOUTUBE_CLIENTID_HASH }}
+          YOUTUBE_SECRET: ${{ secrets.YOUTUBE_SECRET }}
+          YOUTUBE_SECRET_HASH: ${{ secrets.YOUTUBE_SECRET_HASH }}
+          GPU_PRIORITY_VAL: ${{ secrets.GPU_PRIORITY_VAL }}
+        with:
+          target: x64
+          config: RelWithDebInfo
+
+      - name: Package portable ZIP
+        uses: ./.github/actions/package-obs
+        with:
+          target: x64
+          config: RelWithDebInfo
+          package: false
+
+      - name: Create checksum
+        run: |
+          $Zip = Get-ChildItem '${{ github.workspace }}/build_x64/obs-studio-*-windows-x64.zip' |
+            Select-Object -First 1
+          if ($null -eq $Zip) {
+            throw 'Packaged OBS ZIP was not found.'
+          }
+
+          $Hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $Zip.FullName).Hash.ToLowerInvariant()
+          "$Hash  $($Zip.Name)" | Set-Content -Encoding ascii "$($Zip.FullName).sha256"
+          "### YTQ artifact" >> $env:GITHUB_STEP_SUMMARY
+          "``$($Zip.Name)``" >> $env:GITHUB_STEP_SUMMARY
+          "``SHA-256: $Hash``" >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Disk after build
+        if: always()
+        run: Get-PSDrive -Name C | Format-Table -AutoSize
+
+      - name: Upload portable ZIP
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: obs-studio-32.1.2-ytq-windows-x64-${{ github.sha }}
+          path: |
+            ${{ github.workspace }}/build_x64/obs-studio-*-windows-x64.zip
+            ${{ github.workspace }}/build_x64/obs-studio-*-windows-x64.zip.sha256
+          if-no-files-found: error
+          retention-days: 14

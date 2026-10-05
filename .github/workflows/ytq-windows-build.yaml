@@ -29,7 +29,7 @@ jobs:
           }
 
           $BrowserCommit = git -C plugins/obs-browser rev-parse HEAD
-          if ($BrowserCommit -ne '6b6672b2fc5051d6be943489212d64ae15728ec9') {
+          if ($BrowserCommit -ne '733cce26c8ad45af159a3e96aef7a17803301b65') {
             throw "Unexpected obs-browser commit: $BrowserCommit"
           }
 

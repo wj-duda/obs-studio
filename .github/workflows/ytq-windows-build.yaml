@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Check out OBS and submodules
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           submodules: recursive
           fetch-depth: 0
@@ -71,7 +71,8 @@ jobs:
           }
 
           $Hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $Zip.FullName).Hash.ToLowerInvariant()
-          "$Hash  $($Zip.Name)" | Set-Content -Encoding ascii "$($Zip.FullName).sha256"
+          $ChecksumPath = Join-Path $Zip.DirectoryName 'OBS-YTQ-SHA256.txt'
+          "$Hash  $($Zip.Name)" | Set-Content -Encoding ascii $ChecksumPath
           "### YTQ artifact" >> $env:GITHUB_STEP_SUMMARY
           "``$($Zip.Name)``" >> $env:GITHUB_STEP_SUMMARY
           "``SHA-256: $Hash``" >> $env:GITHUB_STEP_SUMMARY
@@ -81,11 +82,11 @@ jobs:
         run: Get-PSDrive -Name C | Format-Table -AutoSize
 
       - name: Upload portable ZIP
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: obs-studio-32.1.2-ytq-windows-x64-${{ github.sha }}
           path: |
             ${{ github.workspace }}/build_x64/obs-studio-*-windows-x64.zip
-            ${{ github.workspace }}/build_x64/obs-studio-*-windows-x64.zip.sha256
+            ${{ github.workspace }}/build_x64/OBS-YTQ-SHA256.txt
           if-no-files-found: error
           retention-days: 14

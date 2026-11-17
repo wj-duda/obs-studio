@@ -23,7 +23,7 @@ jobs:
 
       - name: Verify pinned sources
         run: |
-          git merge-base --is-ancestor 33.0.1 HEAD
+          git merge-base --is-ancestor 65c320b46e1af5c7a555161aea6182cdf7a8c524 HEAD
           if ($LASTEXITCODE -ne 0) {
             throw 'The build branch is not based on OBS 33.0.1.'
           }
